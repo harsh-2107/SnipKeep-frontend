@@ -33,6 +33,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
   const [alertMessage, setAlertMessage] = useState("");
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [titleRows, setTitleRows] = useState(1);
 
   const titleRef = useRef(null);
   const textareaRef = useRef(null);
@@ -83,6 +84,15 @@ const NoteView = ({ note, isOpen, onClose }) => {
     target.scrollTop = ratio * (target.scrollHeight - target.clientHeight);
   };
 
+  // Handle title textarea size
+  const handleTitleInput = () => {
+    const textarea = titleRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }
+
   // Clear form data and UI state
   const clearForm = () => {
     reset({
@@ -131,8 +141,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
       isPinned: isPinned,
       isArchived: isArchived,
       isDeleted: isDeleted,
-      updatedAt: new Date().toISOString(),
-      createdAt: note?.createdAt || new Date().toISOString()
+      updatedAt: new Date().toISOString()
     };
 
     if (note?._id) {
@@ -154,24 +163,47 @@ const NoteView = ({ note, isOpen, onClose }) => {
     }
   }
 
+  // Return a human-readable string describing how recently the note was edited
+  const formatUpdatedAt = () => {
+    if (note) {
+      const updatedAt = new Date(note.updatedAt);
+      const diffSeconds = Math.floor((new Date() - updatedAt) / 1000);
+      const diffMinutes = Math.floor(diffSeconds / 60);
+      const diffHours = Math.floor(diffMinutes / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffHours < 24) {
+        return `Edited at ${updatedAt.toLocaleString("en-IN", { timeStyle: "short", hour12: false })}`;
+      } else if (diffDays === 1) {
+        return `Edited at yesterday, ${updatedAt.toLocaleString("en-IN", { timeStyle: "short", hour12: false })}`;
+      } else {
+        return `Edited at ${updatedAt.getFullYear() !== new Date().getFullYear() ? updatedAt.toLocaleString("en-IN", { dateStyle: "medium" }) : updatedAt.toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short"
+        })}`;
+      }
+    }
+  }
+
   if (!isOpen) return null;
 
   return (
     <>
       <div className="fixed inset-0 z-40 flex justify-center items-center bg-[#3130308c]">
         {/* Modal */}
-        <div className="relative p-2 sm:p-4 w-full rounded-xl max-w-[95vw] lg:max-w-[90vw] bg-white dark:bg-gray-800">
+        <div className="relative p-2 sm:p-3 w-full sm:rounded-xl sm:max-w-[95vw] lg:max-w-[90vw] h-full sm:max-h-[96vh] bg-white dark:bg-gray-800 flex flex-col">
           {/* Grid */}
-          <div className="sm:grid sm:grid-cols-2 sm:gap-3">
+          <div className="md:grid md:grid-cols-2 md:gap-3 flex-grow overflow-hidden">
             {/* Title and Markdown input form */}
-            <form id="note-form" onSubmit={handleSubmit(handleFormSubmit)} className={`bg-white dark:bg-gray-700 rounded-lg shadow-sm overflow-y-auto max-h-[85vh] 
-              ${showMarkdown ? "hidden sm:block" : ""}`}>
-              <div className="flex items-center justify-between p-2 border-b dark:border-gray-600 border-gray-200">
-                <input
+            <form id="note-form" onSubmit={handleSubmit(handleFormSubmit)} className={`bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-0 shadow-sm overflow-y-auto h-full flex flex-col ${showMarkdown ? "hidden md:block" : ""}`}>
+              <div className="flex items-center justify-between p-1 sm:p-2 border-b dark:border-gray-600 border-gray-200">
+                <textarea
                   {...register("title")}
                   ref={(e) => { register("title").ref(e); titleRef.current = e; }}
                   placeholder="Title"
+                  rows={1}
+                  maxLength={150}
                   autoComplete="off"
+                  onChange={handleTitleInput}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -181,10 +213,10 @@ const NoteView = ({ note, isOpen, onClose }) => {
                         textareaRef.current.scrollTop = 0;
                       }
                     }
-                  }} className="border-gray-300 text-gray-900 text-2xl rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-purple-500 dark:focus:border-purple-500 outline-none transition-colors"
+                  }} className="text-gray-900 dark:text-white text-xl sm:text-2xl rounded-lg block w-full px-2 py-1 dark:bg-gray-700 dark:placeholder-gray-400 resize-none overflow-y-hidden outline-none transition-colors"
                 />
               </div>
-              <div className="p-2 h-[77vh] space-y-4 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+              <div className="p-1 pb-0 md:p-2 flex flex-col flex-grow text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
                 <textarea
                   {...register("content")}
                   ref={(e) => { register("content").ref(e); textareaRef.current = e; }}
@@ -194,27 +226,31 @@ const NoteView = ({ note, isOpen, onClose }) => {
                     syncScroll(textareaRef, previewRef);
                     setTimeout(() => { isSyncingRef.current = false; }, 10);
                   }}
-                  placeholder="Markdown"
+                  placeholder="Take a markdown..."
                   autoComplete="off"
-                  className="h-full resize-none border-gray-300 text-gray-900 text-md lg:text-lg rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-purple-500 dark:focus:border-purple-500 outline-none transition-colors"
+                  className="flex-grow text-gray-800 dark:text-white text-sm sm:text-md lg:text-lg rounded-lg block w-full px-2 py-1 dark:bg-gray-700 dark:placeholder-gray-400 resize-none outline-none transition-colors"
                 />
               </div>
+              {/* Display Edited date and time in user readable format in small screen */}
+              {note && <div className="flex items-center justify-end md:hidden text-[10px] text-gray-600 dark:text-white  mr-1 cursor-default">
+                {formatUpdatedAt()}
+              </div>}
             </form>
             {/* Markdown */}
-            <div className={`bg-zinc-50 border border-gray-100 dark:border-0 dark:bg-gray-900 rounded-lg shadow-sm max-h-[85vh] ${showMarkdown ? "h-[85vh] w-full" : "hidden sm:block"}`}>
+            <div className={`bg-zinc-50 border border-gray-200 dark:border-0 dark:bg-gray-900 py-2 rounded-lg shadow-sm h-full flex flex-col overflow-y-hidden ${showMarkdown ? "w-full" : "hidden md:flex"}`}>
               <div ref={previewRef}
                 onScroll={() => {
                   if (isSyncingRef.current) return;
                   isSyncingRef.current = true;
                   syncScroll(previewRef, textareaRef);
                   setTimeout(() => { isSyncingRef.current = false; }, 10);
-                }} className="p-4 overflow-y-auto max-w-full h-full text-gray-700 dark:text-gray-200">
+                }} className="px-4 py-1 max-w-full overflow-auto h-fit flex-grow text-gray-700 dark:text-gray-200">
                 <MarkdownRenderer markdownContent={markdownContent} />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-2 sm:gap-5">
               {/* Add tag button and dropdown menu */}
               <div className="relative">
@@ -261,50 +297,39 @@ const NoteView = ({ note, isOpen, onClose }) => {
                     <button onClick={() => {
                       if (isPinned) { isPinned = false }
                       else { isPinned = true; isArchived = false; isDeleted = false; }
-                    }} className={`py-1.5 sm:py-2 text-sm sm:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer ${note?.isPinned ? "px-2 sm:px-2.5" : "px-2.5 sm:px-3.5"}`} type="submit" form="note-form" disabled={isSubmitting}>
+                    }} className={`py-1.5 sm:py-2 text-sm md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer ${note?.isPinned ? "px-2 sm:px-2.5" : "px-2.5 sm:px-[0.8rem] md:px-3.5"}`} type="submit" form="note-form" disabled={isSubmitting}>
                       {note?.isPinned ? <FontAwesomeIcon icon={faThumbtackSlash} /> : <FontAwesomeIcon icon={faThumbtack} />}
                     </button>
                     <button onClick={() => {
                       if (isArchived) { isArchived = false }
                       else { isPinned = false; isArchived = true; isDeleted = false; }
-                    }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-sm sm:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}>
+                    }} className="px-2.5 py-1.5 sm:px-3 md:px-3.5 sm:py-2 text-sm md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}>
                       <FontAwesomeIcon icon={faFileArchive} /></button>
-                    {note && <button onClick={() => { isPinned = false; isArchived = false; isDeleted = true; }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-sm sm:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}><FontAwesomeIcon icon={faTrash} /></button>}
+                    {note && <button onClick={() => { isPinned = false; isArchived = false; isDeleted = true; }} className="px-2.5 py-1.5 sm:px-3 md:px-3.5 sm:py-2 text-sm md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}><FontAwesomeIcon icon={faTrash} /></button>}
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { isPinned = false; isArchived = false; isDeleted = false; }} className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-sm sm:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}><FontAwesomeIcon icon={faUndo} /></button>
+                    <button onClick={() => { isPinned = false; isArchived = false; isDeleted = false; }} className="px-2.5 py-1.5 sm:px-3 md:px-3.5 sm:py-2 text-sm md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}><FontAwesomeIcon icon={faUndo} /></button>
                     <button onClick={() => setShowConfirm(true)}
-                      className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-sm sm:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white rounded-full dark:text-white dark:bg-gray-700 cursor-pointer"><FontAwesomeIcon icon={faTrash} /></button>
+                      className="px-2.5 py-1.5 sm:px-3 md:px-3.5 sm:py-2 text-sm md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white rounded-full dark:text-white dark:bg-gray-700 cursor-pointer"><FontAwesomeIcon icon={faTrash} /></button>
                   </>
                 )}
                 {/* Toggle between form and markdown in small screen */}
-                <button onClick={() => setShowMarkdown(!showMarkdown)} className={`ml-1.5 py-1 sm:py-2 text-base text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer sm:hidden ${showMarkdown ? "px-[0.42rem]" : "px-2"}`}>
+                <button onClick={() => setShowMarkdown(!showMarkdown)} className={`ml-1.5 sm:ml-3 py-1 sm:py-1.5 md:py-2 text-base md:text-xl text-gray-600 bg-purple-100 hover:bg-purple-500 hover:text-white mr-1.5 sm:mr-3 rounded-full dark:text-white dark:bg-gray-700 cursor-pointer md:hidden ${showMarkdown ? "px-[0.42rem] sm:px-2" : "px-2 sm:px-[0.55rem]"}`}>
                   {showMarkdown ? <FontAwesomeIcon icon={faEyeSlash} /> : <FontAwesomeIcon icon={faEye} />}
                 </button>
               </div>
             </div>
-            {/* Created/Edited date and time, Save and Cancel buttons */}
+            {/* Display Edited date and time in user readable format, Save and Cancel buttons */}
             <div className="flex items-center gap-1 sm:gap-3">
-              {note && <div className="md:flex items-center hidden text-sm dark:text-white cursor-default">
-                <p className="font-medium mr-1">{note.createdAt === note.updatedAt ? "Created:" : "Edited:"}</p>
-                <p>{new Date(note.updatedAt).toLocaleString("en-IN", {
-                  dateStyle: "medium",
-                  timeStyle: "short"
-                })}</p>
+              {note && <div className="md:flex items-center hidden text-[10px] md:text-[11.3px] lg:text-sm text-gray-600 dark:text-white cursor-default">
+                <p className="mr-1">{formatUpdatedAt()}</p>
               </div>}
               <button className="flex items-center justify-center font-semibold bg-purple-50 dark:bg-transparent hover:text-white text-gray-600 dark:text-white px-2 py-1 sm:px-5 sm:py-2 rounded-full hover:bg-purple-500 cursor-pointer" onClick={onClose}>Cancel</button>
               <button className="flex items-center justify-center font-semibold bg-purple-50 dark:bg-transparent hover:text-white text-purple-600 dark:text-white px-2 py-1 sm:px-5 sm:py-2 rounded-full hover:bg-purple-500 cursor-pointer" type="submit" form="note-form" disabled={isSubmitting}>Save</button>
             </div>
           </div>
-          {/* Display Created/Edited date and time in small screen */}
-          {note && <div className="flex items-center justify-end md:hidden text-xs dark:text-white mt-1 mr-2 cursor-default">
-            <p className="font-medium mr-1">{note.createdAt === note.updatedAt ? "Created:" : "Edited:"}</p>
-            <p>{new Date(note.updatedAt).toLocaleString("en-IN", {
-              dateStyle: "medium",
-              timeStyle: "short"
-            })}</p>
-          </div>}
+
         </div>
       </div>
 

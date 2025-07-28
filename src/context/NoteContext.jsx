@@ -75,7 +75,7 @@ export const NoteProvider = ({ children }) => {
   const editNote = async (note) => {
     try {
       const updateNoteURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_UPDATE_NOTE_ENDPOINT;
-      const { _id, updatedAt, createdAt, ...noteWithoutId } = note;
+      const { _id, updatedAt, ...noteWithoutId } = note;
       const finalURL = updateNoteURL + "/" + note._id;
       const res = await fetch(finalURL, {
         method: "PUT",
