@@ -6,6 +6,19 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faXmark, faDoorOpen, faPenToSquare, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 
 const Profile = () => {
+  const { name, email, visible, changeName, changePassword, closeProfile } = useUserContext();
+  const [editName, setEditName] = useState(false);
+  const [editPassword, setEditPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+
+  const nameInputRef = useRef(null);
+  const oldPassInputRef = useRef(null);
+  const newPassInputRef = useRef(null);
+  const confirmPassInputRef = useRef(null);
+
   // useForm for Username Update Form
   const {
     register: registerUsername,
@@ -32,19 +45,6 @@ const Profile = () => {
       confirmNewPassword: ""
     }
   });
-  
-  const { name, email, visible, changeName, changePassword, closeProfile } = useUserContext();
-  const [editName, setEditName] = useState(false);
-  const [editPassword, setEditPassword] = useState(false);
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
-
-  const nameInputRef = useRef(null);
-  const oldPassInputRef = useRef(null);
-  const newPassInputRef = useRef(null);
-  const confirmPassInputRef = useRef(null);
 
   const oldPassword = watchPassword("oldPassword");
   const newPassword = watchPassword("newPassword");
