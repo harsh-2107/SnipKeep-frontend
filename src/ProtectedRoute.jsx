@@ -43,7 +43,7 @@ const ProtectedRoute = ({ children }) => {
     // Show a loading page while checking authentication
     return (
       <div className="flex justify-center items-center h-screen w-screen text-gray-700 dark:text-gray-400 font-semibold gap-4 bg-white dark:bg-gray-900">
-        <div className="flex items-center justify-center mb-42">
+        <div className="flex items-center justify-center mb-42 gap-3">
           <LoadingSpinner />
           <h1 className="text-3xl">Loading...</h1>
         </div>

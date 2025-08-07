@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useUserContext } from "../context/UserContext"
@@ -50,21 +50,21 @@ const Profile = () => {
   const newPassword = watchPassword("newPassword");
 
   // Handle user name updation
-  const handleNameChange = async (data) => {
+  const handleNameChange = useCallback(async (data) => {
     await changeName(data);
     setEditName(false);
-  }
+  }, [changeName]);
 
   // Handle password updation
-  const handlePasswordChange = async (data) => {
+  const handlePasswordChange = useCallback(async (data) => {
     const success = await changePassword(data);
     if (success) {
       setEditPassword(false);
     }
-  }
+  }, [changePassword]);
 
   // Set cursor at input end
-  const setFocusAtInputEnd = (ref) => {
+  const setFocusAtInputEnd = useCallback((ref) => {
     if (ref?.current) {
       setTimeout(() => {
         const inputElement = ref.current;
@@ -73,13 +73,13 @@ const Profile = () => {
         inputElement.setSelectionRange(valueLength, valueLength);
       }, 0);
     }
-  }
+  }, []);
 
   // Sign out user by clearing their token and redirecting to the login page
-  const signout = () => {
+  const signout = useCallback(() => {
     localStorage.removeItem('token');
     navigate("/login", { replace: true });
-  }
+  }, [navigate]);
 
   // Reset the change name form and focus at the end of new name input when the user clicks on edit name button
   useEffect(() => {

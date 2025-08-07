@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { NoteProvider } from "./context/NoteContext";
 import { SidebarProvider } from './context/SidebarContext';
+import { ViewModeProvider } from './context/ViewModeContext';
 import { UserProvider } from "./context/UserContext";
 import ProtectedRoute from "./ProtectedRoute";
 import Home from './components/Intro/Home';
@@ -27,30 +28,30 @@ function App() {
             {/* Protected Routes */}
             <Route path="/notes" element={
               <ProtectedRoute>
-                <SidebarProvider><UserProvider><NoteProvider>
+                <SidebarProvider><ViewModeProvider><UserProvider><NoteProvider>
                   <Notes />
-                </NoteProvider></UserProvider></SidebarProvider>
+                </NoteProvider></UserProvider></ViewModeProvider></SidebarProvider>
               </ProtectedRoute>
             } />
             <Route path="/archive" element={
               <ProtectedRoute>
-                <SidebarProvider><UserProvider><NoteProvider>
+                <SidebarProvider><ViewModeProvider><UserProvider><NoteProvider>
                   <Archive />
-                </NoteProvider></UserProvider></SidebarProvider>
+                </NoteProvider></UserProvider></ViewModeProvider></SidebarProvider>
               </ProtectedRoute>
             } />
             <Route path="/trash" element={
               <ProtectedRoute>
-                <SidebarProvider><UserProvider><NoteProvider>
+                <SidebarProvider><ViewModeProvider><UserProvider><NoteProvider>
                   <Trash />
-                </NoteProvider></UserProvider></SidebarProvider>
+                </NoteProvider></UserProvider></ViewModeProvider></SidebarProvider>
               </ProtectedRoute>
             } />
             <Route path="/search" element={
               <ProtectedRoute>
-                <SidebarProvider><UserProvider><NoteProvider>
+                <SidebarProvider><ViewModeProvider><UserProvider><NoteProvider>
                   <Search />
-                </NoteProvider></UserProvider></SidebarProvider>
+                </NoteProvider></UserProvider></ViewModeProvider></SidebarProvider>
               </ProtectedRoute>
             } />
 

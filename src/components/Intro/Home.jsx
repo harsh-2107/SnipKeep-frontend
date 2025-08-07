@@ -5,9 +5,7 @@ import { faShieldAlt, faCode, faTags, faThumbtack } from '@fortawesome/free-soli
 import Navbar from '../Navbar';
 import Footer from '../Footer';
 
-const Home = () => {
-  const { darkMode } = useDarkMode();
-  const features = [
+const features = [
     {
       title: "Markdown Support",
       icon: faCode,
@@ -29,6 +27,9 @@ const Home = () => {
       description: "Pin important notes or archive them for later, keeping your workspace organized.",
     },
   ];
+
+const Home = () => {
+  const { darkMode } = useDarkMode();
 
   return (
     <>
@@ -58,7 +59,7 @@ const Home = () => {
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-8">
           {features.map((feature, i) => (
             <div key={i}
-              className="bg-purple-50 dark:bg-purple-800 rounded-xl p-6 text-center shadow hover:shadow-lg transition-all duration-300">
+              className="bg-purple-50 dark:bg-purple-800 rounded-xl p-6 text-center shadow hover:shadow-lg dark:hover:shadow-gray-700 transition-all duration-300">
               <FontAwesomeIcon icon={feature.icon} className="text-3xl text-purple-600 dark:text-purple-200 mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{feature.title}</h3>
               <p className="text-gray-700 dark:text-gray-300 mt-2">{feature.description}</p>

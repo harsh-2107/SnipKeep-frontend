@@ -3,6 +3,61 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-body{
-    overflow-x: hidden;
+body {
+  overflow-x: hidden;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 0;
+  cursor: default;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track:hover {
+  background: #f1f1f1;
+  border-radius: 0;
+  border: 0.1px solid #d1d5db;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track:hover {
+  background: #56616b3a;
+  border-radius: 0;
+  border: 0.1px solid rgba(55, 59, 75, 0.473);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 0;
+  background-clip: padding-box;
+  cursor: default;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #3d4653;
+}
+
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none;
+}
+
+.body-scrollbar::-webkit-scrollbar-track {
+  border: 0.1px solid rgba(175, 176, 184, 0.753);
+}
+
+.dark .body-scrollbar::-webkit-scrollbar-track {
+  border: 0.1px solid rgb(55, 59, 75);
 }

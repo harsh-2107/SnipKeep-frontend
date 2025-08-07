@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useNoteContext } from '../../context/NoteContext';
 import { useSidebarContext } from '../../context/SidebarContext';
-import DisplayHeader from '../DisplayHeader';
-import NoteCard from './NoteCard';
+import { useViewModeContext } from '../../context/ViewModeContext';
+import Header from '../Header';
 import NoteView from './NoteView';
 import Alert from '../Alert';
+import Grid from '../Grid';
 
 const Search = () => {
-  const { searchedNotes, selectedNote, isModalOpen, setModalOpen, alertMessage } = useNoteContext();
+  const { searchedNotes, selectedNote, isModalOpen, setModalOpen, alertMessage, setOpenDropdownNoteId, setDropdownType } = useNoteContext();
+  const { viewMode } = useViewModeContext();
   const [archivedNotes, setArchivedNotes] = useState([]);
+  const [unarchivedNotes, setUnarchivedNotes] = useState([]);
   const { sidebarOpen } = useSidebarContext();
   const [hasSearched, setHasSearched] = useState(false);
   const location = useLocation();
@@ -24,13 +27,14 @@ const Search = () => {
   // Update the archivedNotes state when searchedNotes state changes
   useEffect(() => {
     setArchivedNotes(searchedNotes.filter(note => note.isArchived && note));
+    setUnarchivedNotes(searchedNotes.filter(note => !note.isDeleted && !note.isArchived && note)); 5
   }, [searchedNotes])
 
   return (
     <>
-      <DisplayHeader />
+      <Header />
 
-      <div className={`bg-transparent pt-18 lg:pt-25 z-0 transition-all max-w-screen-2xl w-full mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 2xl:pr-0 mb-5 ${sidebarOpen ? 'pl-20 sm:pl-72 md:pl-68 xl:pl-72 2xl:pl-32' : 'pl-20 sm:pl-20 md:pl-20 xl:pl-20 2xl:pl-0'}`}>
+      <div className={`bg-transparent pt-18 lg:pt-25 z-0 mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 mb-5 ${sidebarOpen ? "pl-20 md:pl-68 xl:pl-72 2xl:pl-70" : "pl-20 md:pl-20 xl:pl-20 2xl:pl-25"}`} onClick={() => {setOpenDropdownNoteId(null); setDropdownType("")}}>
         {hasSearched ?
           (searchedNotes.length === 0 ? (
             // Display this message if no notes are present
@@ -39,25 +43,11 @@ const Search = () => {
             </div>
           ) : (
             <>
-              <div className={`mx-auto grid gap-4 transition-all duration-500 ${sidebarOpen
-                ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4'
-                : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-                }`}>
-                {searchedNotes.map((note) => (
-                  !note.isArchived && <NoteCard key={note._id} note={note} />
-                ))}
-              </div>
+              <Grid notes={unarchivedNotes} />
               {archivedNotes.length !== 0 &&
                 <>
-                  <h1 className="text-xl mt-10 mb-2 dark:text-white font-semibold">ARCHIVED</h1>
-                  <div className={`mx-auto grid gap-4 transition-all duration-500 ${sidebarOpen
-                    ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4'
-                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-                    }`}>
-                    {archivedNotes.map((note) => (
-                      <NoteCard key={note._id} note={note} />
-                    ))}
-                  </div>
+                  <h1 className={`text-xl mt-10 mb-4 dark:text-white font-semibold ${viewMode === 'list' && "max-w-2xl mx-auto"}`}>ARCHIVED</h1>
+                  <Grid notes={archivedNotes} />
                 </>
               }
             </>

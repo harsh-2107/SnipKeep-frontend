@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -39,7 +39,7 @@ const SignUp = () => {
             setIsAuthenticated(false);
           }
         } catch (error) {
-          console.error("Something went wrong:", error);
+          setAlertMessage("Something went wrong");
         }
       }
     }
@@ -48,7 +48,7 @@ const SignUp = () => {
   }, []);
 
   // Handle sign up form submission
-  const onSubmit = async (credentials) => {
+  const onSubmit = useCallback(async (credentials) => {
     try {
       const signUpURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_SIGNUP_ENDPOINT;
       const res = await fetch(signUpURL, {
@@ -69,17 +69,17 @@ const SignUp = () => {
     } catch (error) {
       setAlertMessage("Something went wrong. Please try again.");
     }
-  };
+  }, []);
 
   // Set the cursor at input end (for password input when its visibility is toggled)
-  const setFocusAtInputEnd = () => {
+  const setFocusAtInputEnd = useCallback(() => {
     setTimeout(() => {
       const inputElement = passwordInputRef.current;
       const valueLength = inputElement.value.length;
       inputElement.focus();
       inputElement.setSelectionRange(valueLength, valueLength);
     }, 0);
-  }
+  }, []);
 
   return (
     <>

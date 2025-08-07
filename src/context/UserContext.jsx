@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const UserContext = createContext('false');
 
@@ -10,7 +10,7 @@ export const UserProvider = ({ children }) => {
   const [alertMessage, setAlertMessage] = useState("");
 
   // Change user's name by calling backend API
-  const changeName = async (user) => {
+  const changeName = useCallback(async (user) => {
     try {
       const changeNameURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_CHANGE_USERNAME_ENDPOINT;
       const res = await fetch(changeNameURL, {
@@ -32,10 +32,10 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       setAlertMessage("Failed to update name. Please try again.");
     }
-  }
+  }, []);
 
   // Change user's password by calling backend API
-  const changePassword = async (passwordObj) => {
+  const changePassword = useCallback(async (passwordObj) => {
     try {
       const changePasswordURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_CHANGE_PASSWORD_ENDPOINT;
       const { confirmNewPassword, ...updatedPasswordObj } = passwordObj;
@@ -59,15 +59,15 @@ export const UserProvider = ({ children }) => {
       setAlertMessage("Failed to update password. Please try again.");
       return false;
     }
-  }
+  }, []);
 
   // Close profile modal with a short transition delay
-  const closeProfile = () => {
+  const closeProfile = useCallback(() => {
     setVisible(false)
     setTimeout(() => {
       setProfileOpen(false)
     }, 401);
-  }
+  }, []);
 
   // On component mount, fetch user details from backend
   useEffect(() => {

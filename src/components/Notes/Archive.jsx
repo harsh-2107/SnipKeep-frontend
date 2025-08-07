@@ -1,20 +1,20 @@
 import { useNoteContext } from '../../context/NoteContext';
 import { useSidebarContext } from '../../context/SidebarContext';
-import DisplayHeader from '../DisplayHeader';
-import NoteCard from './NoteCard';
+import Header from '../Header';
 import NoteView from './NoteView';
 import Alert from '../Alert';
 import LoadingSpinner from '../LoadingSpinner';
+import Grid from '../Grid';
 
 const Archive = () => {
-  const { archivedNotes, selectedNote, isModalOpen, setModalOpen, loading, alertMessage } = useNoteContext();
+  const { archivedNotes, selectedNote, isModalOpen, setModalOpen, loading, alertMessage, setOpenDropdownNoteId, setDropdownType } = useNoteContext();
   const { sidebarOpen } = useSidebarContext();
 
   return (
     <>
-      <DisplayHeader />
+      <Header />
 
-      <div className={`bg-transparent pt-18 lg:pt-25 z-0 transition-all max-w-screen-2xl w-full mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 2xl:pr-0 mb-5 ${sidebarOpen ? 'pl-20 sm:pl-72 md:pl-68 xl:pl-72 2xl:pl-32' : 'pl-20 sm:pl-20 md:pl-20 xl:pl-20 2xl:pl-0'}`}>
+      <div className={`bg-transparent pt-18 lg:pt-25 z-0 mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 mb-5 ${sidebarOpen ? "pl-20 md:pl-68 xl:pl-72 2xl:pl-70" : "pl-20 md:pl-20 xl:pl-20 2xl:pl-25"}`} onClick={() => {setOpenDropdownNoteId(null); setDropdownType("")}}>
         {loading ?
           (<div className="flex items-center justify-center gap-4">
             <LoadingSpinner />
@@ -28,14 +28,7 @@ const Archive = () => {
                 Archive is empty
               </div>
             ) : (
-              <div className={`mx-auto grid gap-4 transition-all duration-500 ${sidebarOpen
-                ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4'
-                : 'grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-                }`}>
-                {archivedNotes.map((note) => (
-                  <NoteCard key={note._id} note={note} />
-                ))}
-              </div>
+              <Grid notes={archivedNotes} category="archived" />
             )}
           </>
         }

@@ -1,0 +1,30 @@
+/* Masonry Grid Styles */
+.masonry-grid {
+  display: flex;
+  margin-left: -16px;
+  width: auto;
+}
+
+.masonry-grid-column {
+  padding-left: 16px;
+  background-clip: padding-box;
+}
+
+.masonry-grid-column > div {
+  margin-bottom: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .masonry-grid {
+    margin-left: -8px;
+  }
+  
+  .masonry-grid-column {
+    padding-left: 8px;
+  }
+  
+  .masonry-grid-column > div {
+    margin-bottom: 12px;
+  }
+}
