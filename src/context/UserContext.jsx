@@ -69,25 +69,27 @@ export const UserProvider = ({ children }) => {
     }, 401);
   }, []);
 
-  // On component mount, fetch user details from backend
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const getUserURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_GET_USER_ENDPOINT;
-        const res = await fetch(getUserURL, {
-          method: "POST",
-          headers: {
-            "auth-token": localStorage.getItem("token"),
-          }
-        });
+  // Get user name and email by calling backend API
+  const getUser = useCallback(async () => {
+    try {
+      const getUserURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_GET_USER_ENDPOINT;
+      const res = await fetch(getUserURL, {
+        method: "POST",
+        headers: {
+          "auth-token": localStorage.getItem("token"),
+        }
+      });
+      if (res.ok) {
         const user = await res.json();
         setName(user.name)
         setEmail(user.email);
-      } catch (error) {
-        console.log("Couldn't fetch user details", error);
+        return true;
       }
-    };
-    getUser();
+      return false;
+    } catch (error) {
+      setAlertMessage("Failed to fetch user details");
+      return false;
+    }
   }, []);
 
   // Show the profile modal only after it's marked as open (for transition effect)
@@ -107,7 +109,7 @@ export const UserProvider = ({ children }) => {
   }, [location.pathname])
 
   return (
-    <UserContext.Provider value={{ name, email, setName, changeName, changePassword, profileOpen, setProfileOpen, visible, setVisible, closeProfile, alertMessage }}>
+    <UserContext.Provider value={{ name, email, getUser, setName, changeName, changePassword, profileOpen, setProfileOpen, visible, setVisible, closeProfile, alertMessage }}>
       {children}
     </UserContext.Provider>
   );

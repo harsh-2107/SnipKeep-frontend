@@ -78,6 +78,7 @@ const Profile = () => {
   // Sign out user by clearing their token and redirecting to the login page
   const signout = useCallback(() => {
     localStorage.removeItem('token');
+    closeProfile();
     navigate("/login", { replace: true });
   }, [navigate]);
 

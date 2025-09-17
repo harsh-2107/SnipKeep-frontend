@@ -18,59 +18,7 @@ export const NoteProvider = ({ children }) => {
   const [alertMessage, setAlertMessage] = useState("");
   const location = useLocation();
 
-  // Decrease order of notes that were after the removed note
-  const reorderPreviousCategoryNotes = useCallback((categoryNotes, removedNoteOrder) => {
-    return categoryNotes.map(note => {
-      if (note.order > removedNoteOrder) {
-        return { ...note, order: note.order - 1 };
-      }
-      return note;
-    });
-  }, []);
-
-  // Increase order of all existing notes by 1, add new note at order 0
-  const reorderNewCategoryNotes = useCallback((newNote, categoryNotes) => {
-    return [
-      { ...newNote, order: 0 },
-      ...categoryNotes.map(note => ({ ...note, order: note.order + 1 }))
-    ];
-  }, []);
-
-  // Helper to get category setter based on note properties
-  const getCategorySetter = useCallback((note) => {
-    if (note.isPinned) return setPinnedNotes;
-    if (note.isArchived) return setArchivedNotes;
-    if (note.isDeleted) return setDeletedNotes;
-    return setNotes;
-  }, []);
-
-  // Helper to get category notes based on note properties
-  const getCategoryNotes = useCallback((note) => {
-    if (note.isPinned) return pinnedNotes;
-    if (note.isArchived) return archivedNotes;
-    if (note.isDeleted) return deletedNotes;
-    return notes;
-  }, [pinnedNotes, archivedNotes, deletedNotes, notes]);
-
-  // Rollback state utility for optimistic updates
-  const rollbackState = useCallback((originalNote) => {
-    const allSetters = [setPinnedNotes, setArchivedNotes, setDeletedNotes, setNotes];
-    // Remove from all lists first
-    allSetters.forEach(setter => {
-      setter(prev => prev.filter(n => n._id !== originalNote._id));
-    });
-    // Add back to correct list with proper ordering
-    const targetSetter = getCategorySetter(originalNote);
-    const targetNotes = getCategoryNotes(originalNote);
-    targetSetter(prev =>
-      reorderNewCategoryNotes(
-        originalNote,
-        reorderPreviousCategoryNotes(targetNotes, originalNote.order)
-      )
-    );
-  }, [getCategorySetter, getCategoryNotes, reorderNewCategoryNotes, reorderPreviousCategoryNotes]);
-
-  // Fetche notes from the backend using a filter and set alert message if an error occurs during fetch
+  // Fetch notes from the backend using a filter and set alert message if an error occurs during fetch
   const fetchNotes = useCallback(async (filter) => {
     try {
       const fetchNotesURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_FETCH_NOTES_ENDPOINT;
@@ -110,12 +58,12 @@ export const NoteProvider = ({ children }) => {
       if (res.ok) {
         const newNote = await res.json();
         if (newNote.isPinned) {
-          setPinnedNotes(prev => reorderNewCategoryNotes(newNote, prev));
+          setPinnedNotes(prev => [newNote, ...prev]);
         } else if (newNote.isArchived) {
-          setArchivedNotes(prev => reorderNewCategoryNotes(newNote, prev));
+          setArchivedNotes(prev => [newNote, ...prev]);
           setAlertMessage("Note archived");
         } else {
-          setNotes(prev => reorderNewCategoryNotes(newNote, prev));
+          setNotes(prev => [newNote, ...prev]);
         }
         return true;
       } else {
@@ -127,7 +75,7 @@ export const NoteProvider = ({ children }) => {
       setAlertMessage("Failed to create note. Please try again.");
       return false;
     }
-  }, [reorderNewCategoryNotes]);
+  }, []);
 
   // Update an existing note on the server and in local state
   const editNote = useCallback(async (note) => {
@@ -144,60 +92,23 @@ export const NoteProvider = ({ children }) => {
         body: JSON.stringify(noteWithoutId)
       });
       if (res.ok) {
-        const isCategoryChanged = !(
-          selectedNote.isPinned === note.isPinned &&
-          selectedNote.isArchived === note.isArchived &&
-          selectedNote.isDeleted === note.isDeleted
-        );
-        if (isCategoryChanged) {
-          // Remove from previous category and reorder remaining notes
-          if (selectedNote.isPinned) {
-            setPinnedNotes(prev => {
-              const filtered = prev.filter(n => n._id !== note._id);
-              return reorderPreviousCategoryNotes(filtered, selectedNote.order);
-            });
-          } else if (selectedNote.isArchived) {
-            setArchivedNotes(prev => {
-              const filtered = prev.filter(n => n._id !== note._id);
-              return reorderPreviousCategoryNotes(filtered, selectedNote.order);
-            });
-          } else if (selectedNote.isDeleted) {
-            setDeletedNotes(prev => {
-              const filtered = prev.filter(n => n._id !== note._id);
-              return reorderPreviousCategoryNotes(filtered, selectedNote.order);
-            });
-          } else {
-            setNotes(prev => {
-              const filtered = prev.filter(n => n._id !== note._id);
-              return reorderPreviousCategoryNotes(filtered, selectedNote.order);
-            });
-          }
-          // Add to new category at top (order 0)
-          if (note.isPinned) {
-            setPinnedNotes(prev => reorderNewCategoryNotes(note, prev));
-            selectedNote.isArchived && setAlertMessage("Note unarchived and pinned");
-          } else if (note.isArchived) {
-            setArchivedNotes(prev => reorderNewCategoryNotes(note, prev));
-            selectedNote.isPinned ? setAlertMessage("Note unpinned and archived") : !selectedNote.isArchived && setAlertMessage("Note archived");
-          } else if (note.isDeleted) {
-            setDeletedNotes(prev => reorderNewCategoryNotes(note, prev));
-            !selectedNote.isDeleted && setAlertMessage("Note binned");
-          } else {
-            setNotes(prev => reorderNewCategoryNotes(note, prev));
-            selectedNote.isArchived && setAlertMessage("Note unarchived");
-            selectedNote.isDeleted && setAlertMessage("Note restored");
-          }
+        setNotes(prev => prev.filter(n => n._id !== note._id));
+        setPinnedNotes(prev => prev.filter(n => n._id !== note._id));
+        setArchivedNotes(prev => prev.filter(n => n._id !== note._id));
+        setDeletedNotes(prev => prev.filter(n => n._id !== note._id));
+        if (note.isPinned) {
+          setPinnedNotes(prev => [note, ...prev]);
+          selectedNote.isArchived && setAlertMessage("Note unarchived and pinned");
+        } else if (note.isArchived) {
+          setArchivedNotes(prev => [note, ...prev]);
+          selectedNote.isPinned ? setAlertMessage("Note unpinned and archived") : !selectedNote.isArchived && setAlertMessage("Note archived");
+        } else if (note.isDeleted) {
+          setDeletedNotes(prev => [note, ...prev]);
+          !selectedNote.isDeleted && setAlertMessage("Note binned");
         } else {
-          // Same category - just update the note
-          if (note.isPinned) {
-            setPinnedNotes(prev => prev.map(n => n._id === note._id ? note : n));
-          } else if (note.isArchived) {
-            setArchivedNotes(prev => prev.map(n => n._id === note._id ? note : n));
-          } else if (note.isDeleted) {
-            setDeletedNotes(prev => prev.map(n => n._id === note._id ? note : n));
-          } else {
-            setNotes(prev => prev.map(n => n._id === note._id ? note : n));
-          }
+          setNotes(prev => [note, ...prev]);
+          selectedNote.isArchived && setAlertMessage("Note unarchived");
+          selectedNote.isDeleted && setAlertMessage("Note restored");
         }
         setSearchedNotes(prev => prev.map(n => n._id === note._id ? note : n));
         return true;
@@ -210,7 +121,7 @@ export const NoteProvider = ({ children }) => {
       setAlertMessage("Failed to update note. Please try again.");
       return false;
     }
-  }, [selectedNote, reorderPreviousCategoryNotes, reorderNewCategoryNotes]);
+  }, [selectedNote]);
 
   // Search for notes based on searched text and populate the searchedNotes state with the results
   const search = useCallback(async (searchText) => {
@@ -233,24 +144,31 @@ export const NoteProvider = ({ children }) => {
     }
   }, []);
 
+  // Search for notes based on note tags and populate the searchedNotes state with the results
+  const searchNoteByTag = useCallback(async (tagName) => {
+    try {
+      const finalURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_SEARCH_BY_TAG_ENDPOINT + "?tagName=" + encodeURIComponent(tagName);
+      const res = await fetch(finalURL, {
+        method: "GET",
+        headers: {
+          "auth-token": localStorage.getItem("token")
+        }
+      });
+      if (res.ok) {
+        setSearchedNotes(await res.json());
+      } else {
+        const errorData = await res.json();
+        setAlertMessage(errorData.error);
+      }
+    } catch (error) {
+      setAlertMessage(`Failed to find notes with tag name ${tagName}. Please try again.`);
+    }
+  }, []);
+
   // Toggle a note's pinned state (pin/unpin) and move it between states accordingly
   const onPin = useCallback(async (note) => {
-    const originalNote = { ...note };
-    const updatedNote = {
-      ...note,
-      isPinned: !note.isPinned,
-      isArchived: false,
-    };
-    // Optimistically update UI
-    const oldSetter = getCategorySetter(originalNote);
-    const newSetter = getCategorySetter(updatedNote);
-    oldSetter(prev => {
-      const filtered = prev.filter(n => n._id !== note._id);
-      return reorderPreviousCategoryNotes(filtered, note.order);
-    });
-    newSetter(prev => reorderNewCategoryNotes(updatedNote, prev));
-    setSearchedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
     try {
+      const initialNote = JSON.parse(JSON.stringify(note));
       const togglePinURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_TOGGLE_PIN_ENDPOINT;
       const finalURL = togglePinURL + "/" + note._id;
       const res = await fetch(finalURL, {
@@ -259,41 +177,39 @@ export const NoteProvider = ({ children }) => {
           "auth-token": localStorage.getItem("token"),
         }
       });
-      if (!res.ok) {
-        throw await res.json();
+      if (res.ok) {
+        // Remove from all lists
+        if (note.isPinned) {
+          setPinnedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else if (note.isArchived) {
+          setArchivedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else {
+          setNotes(prev => prev.filter(n => n._id !== note._id));
+        }
+        // Update isPinned key of note
+        note.isPinned = !note.isPinned;
+        note.isArchived = false;
+        // Add to appropriate list
+        if (note.isPinned) {
+          setPinnedNotes(prev => [note, ...prev]);
+        } else {
+          setNotes(prev => [note, ...prev]);
+        }
+        setSearchedNotes(prev => prev.map(n => n._id === note._id ? note : n));
+        initialNote.isArchived && setAlertMessage("Note unarchived and pinned");
+      } else {
+        const errorData = await res.json();
+        setAlertMessage(errorData.error);
       }
     } catch (error) {
-      // Rollback optimistic update
-      rollbackState(originalNote);
-      setSearchedNotes(prev => prev.map(n => n._id === originalNote._id ? originalNote : n));
-      setAlertMessage(error.error || "Failed to pin/unpin note. Please try again.");
+      setAlertMessage("Failed to pin/unpin note. Please try again.");
     }
-  }, [getCategorySetter, reorderPreviousCategoryNotes, reorderNewCategoryNotes, rollbackState]);
+  }, []);
 
   // Toggle a note's archived state (archive/unarchive) and move it between states accordingly
   const onArchive = useCallback(async (note) => {
-    const originalNote = { ...note };
-    const isCurrentlyArchived = note.isArchived;
-    const updatedNote = {
-      ...note,
-      isPinned: false,
-      isArchived: !isCurrentlyArchived,
-    };
-    // Optimistically update UI
-    const oldSetter = getCategorySetter(originalNote);
-    const newSetter = getCategorySetter(updatedNote);
-    oldSetter(prev => {
-      const filtered = prev.filter(n => n._id !== note._id);
-      return reorderPreviousCategoryNotes(filtered, note.order);
-    });
-    newSetter(prev => reorderNewCategoryNotes(updatedNote, prev));
-    setSearchedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
-    if (!isCurrentlyArchived) {
-      setAlertMessage(originalNote.isPinned ? "Note unpinned and archived" : "Note archived");
-    } else {
-      setAlertMessage("Note unarchived");
-    }
     try {
+      const initialNote = JSON.parse(JSON.stringify(note));
       const toggleArchiveURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_TOGGLE_ARCHIVE_ENDPOINT;
       const finalURL = toggleArchiveURL + "/" + note._id;
       const res = await fetch(finalURL, {
@@ -302,42 +218,40 @@ export const NoteProvider = ({ children }) => {
           "auth-token": localStorage.getItem("token"),
         }
       });
-      if (!res.ok) {
-        throw await res.json();
+      if (res.ok) {
+        // Remove from all lists
+        if (note.isPinned) {
+          setPinnedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else if (note.isArchived) {
+          setArchivedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else {
+          setNotes(prev => prev.filter(n => n._id !== note._id));
+        }
+        // Update isArchived key of note
+        note.isArchived = !note.isArchived;
+        note.isPinned = false;
+        // Add to appropriate list
+        if (note.isArchived) {
+          setArchivedNotes(prev => [note, ...prev]);
+        } else {
+          setNotes(prev => [note, ...prev]);
+        }
+        setSearchedNotes(prev => prev.filter(n => n._id !== note._id));
+        setSearchedNotes(prev => [note, ...prev]);
+        initialNote.isPinned ? setAlertMessage("Note unpinned and archived") : !initialNote.isArchived ? setAlertMessage("Note archived") : setAlertMessage("Note unarchived");
+      } else {
+        const errorData = await res.json();
+        setAlertMessage(errorData.error);
       }
     } catch (error) {
-      // Rollback optimistic update
-      rollbackState(originalNote);
-      setSearchedNotes(prev => prev.map(n => n._id === originalNote._id ? originalNote : n));
-      setAlertMessage(error.error || "Failed to archive/unarchive note. Please try again.");
+      setAlertMessage("Failed to archive/unarchive note. Please try again.");
     }
-  }, [getCategorySetter, reorderPreviousCategoryNotes, reorderNewCategoryNotes, rollbackState]);
+  }, []);
 
   // Toggle a note's deleted state (delete/restore) and move it between states accordingly
   const onDelete = useCallback(async (note) => {
-    const originalNote = { ...note };
-    const isCurrentlyDeleted = note.isDeleted;
-    const updatedNote = {
-      ...note,
-      isPinned: false,
-      isArchived: false,
-      isDeleted: !isCurrentlyDeleted,
-    };
-    // Optimistically update UI
-    const oldSetter = getCategorySetter(originalNote);
-    const newSetter = getCategorySetter(updatedNote);
-    oldSetter(prev => {
-      const filtered = prev.filter(n => n._id !== note._id);
-      return reorderPreviousCategoryNotes(filtered, note.order);
-    });
-    newSetter(prev => reorderNewCategoryNotes(updatedNote, prev));
-    if (!isCurrentlyDeleted) {
-      setSearchedNotes(prev => prev.filter(n => n._id !== note._id));
-    } else {
-      setSearchedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
-    }
-    setAlertMessage(!isCurrentlyDeleted ? "Note binned" : "Note restored");
     try {
+      const initialNote = JSON.parse(JSON.stringify(note));
       const toggleDeleteURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_TOGGLE_DELETE_ENDPOINT;
       const finalURL = toggleDeleteURL + "/" + note._id;
       const res = await fetch(finalURL, {
@@ -346,20 +260,36 @@ export const NoteProvider = ({ children }) => {
           "auth-token": localStorage.getItem("token"),
         }
       });
-      if (!res.ok) {
-        throw await res.json();
+      if (res.ok) {
+        // Remove from all lists
+        if (note.isPinned) {
+          setPinnedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else if (note.isArchived) {
+          setArchivedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else if (note.isDeleted) {
+          setDeletedNotes(prev => prev.filter(n => n._id !== note._id));
+        } else {
+          setNotes(prev => prev.filter(n => n._id !== note._id));
+        }
+        note.isDeleted = !note.isDeleted;
+        note.isPinned = false;
+        note.isArchived = false;
+        // Add to appropriate list
+        if (note.isDeleted) {
+          setDeletedNotes(prev => [note, ...prev]);
+        } else {
+          setNotes(prev => [note, ...prev]);
+        }
+        setSearchedNotes(prev => prev.filter(n => n.isDeleted === false));
+        !initialNote.isDeleted ? setAlertMessage("Note binned") : setAlertMessage("Note restored");
+      } else {
+        const errorData = await res.json();
+        setAlertMessage(errorData.error);
       }
     } catch (error) {
-      // Rollback optimistic update
-      rollbackState(originalNote);
-      if (!originalNote.isDeleted) {
-        setSearchedNotes(prev => prev.filter(n => n.isDeleted === false));
-      } else {
-        setSearchedNotes(prev => prev.map(n => n._id === originalNote._id ? originalNote : n));
-      }
-      setAlertMessage(error.error || "Failed to delete/restore note. Please try again.");
+      setAlertMessage("Failed to delete/restore note note. Please try again.");
     }
-  }, [getCategorySetter, reorderPreviousCategoryNotes, reorderNewCategoryNotes, rollbackState]);
+  }, []);
 
   // Permanently delete a note from the backend and state (only works for already deleted notes)
   const permanentDelete = useCallback(async (note) => {
@@ -373,11 +303,10 @@ export const NoteProvider = ({ children }) => {
         }
       });
       if (res.ok) {
-        setDeletedNotes(prev => {
-          const filtered = prev.filter(n => n._id !== note._id);
-          return reorderPreviousCategoryNotes(filtered, note.order);
-        });
-        setAlertMessage("Note permanently deleted");
+        const deleteMessage = await res.json();
+        // Remove from all lists
+        setDeletedNotes(prev => prev.filter(n => n._id !== note._id));
+        setAlertMessage(deleteMessage.message);
       } else {
         const errorData = await res.json();
         setAlertMessage(errorData.error);
@@ -385,7 +314,7 @@ export const NoteProvider = ({ children }) => {
     } catch (error) {
       setAlertMessage("Failed to permanently delete note. Please try again.");
     }
-  }, [reorderPreviousCategoryNotes]);
+  }, []);
 
   // Change the colour of the note card
   const changeNoteColour = useCallback(async (note, colour) => {
@@ -422,30 +351,37 @@ export const NoteProvider = ({ children }) => {
     }
   }, []);
 
-  // Reorder notes after drag and drop
-  const reorderNotes = useCallback(async (reorderedNotes, category) => {
+  // Change note tags
+  const changeNoteTags = useCallback(async (note, newTags) => {
     try {
-      const reorderURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_REORDER_ENDPOINT;
-      const res = await fetch(reorderURL, {
+      const changeTagsURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_CHANGE_TAGS_ENDPOINT;
+      const finalURL = changeTagsURL + "/" + note._id;
+      const res = await fetch(finalURL, {
         method: "PUT",
         headers: {
           "auth-token": localStorage.getItem("token"),
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          rearrangedNotes: reorderedNotes,
-          category: category
-        })
-      });
+        body: JSON.stringify({ tag: newTags })
+      })
       if (res.ok) {
+        const updatedNote = { ...note, tag: newTags };
+        if (note.isPinned) {
+          setPinnedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
+        } else if (note.isArchived) {
+          setArchivedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
+        } else {
+          setNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
+        }
+        setSearchedNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n));
         return true;
       } else {
         const errorData = await res.json();
-        setAlertMessage(errorData.error || "Failed to reorder notes. Please try again.");
+        setAlertMessage(errorData.error);
         return false;
       }
     } catch (error) {
-      setAlertMessage("Failed to reorder notes. Please try again.");
+      setAlertMessage("Failed to change note tags. Please try again.");
       return false;
     }
   }, []);
@@ -486,18 +422,13 @@ export const NoteProvider = ({ children }) => {
     setModalOpen(true);
   }, []);
 
-  // On component mount, fetch all note categories from backend and set loading state during fetch to control loading UI
-  useEffect(() => {
-    const getAllNotes = async () => {
-      setLoading(true);
-      setNotes(await fetchNotes("?filter="));
-      setPinnedNotes(await fetchNotes("?filter=pinned"));
-      setArchivedNotes(await fetchNotes("?filter=archived"));
-      setDeletedNotes(await fetchNotes("?filter=deleted"));
-      setLoading(false);
-    };
-
-    getAllNotes();
+  const getAllNotes = useCallback(async () => {
+    setLoading(true);
+    setNotes(await fetchNotes("?filter="));
+    setPinnedNotes(await fetchNotes("?filter=pinned"));
+    setArchivedNotes(await fetchNotes("?filter=archived"));
+    setDeletedNotes(await fetchNotes("?filter=deleted"));
+    setLoading(false);
   }, [fetchNotes]);
 
   // Clear alert message when the user navigates to a new page
@@ -508,8 +439,8 @@ export const NoteProvider = ({ children }) => {
   }, [location.pathname]);
 
   const contextValue = useMemo(() => ({
-    notes, pinnedNotes, archivedNotes, deletedNotes, searchedNotes, selectedNote, addNote, editNote, search, onPin, onArchive, onDelete, permanentDelete, changeNoteColour, makeNoteCopy, downloadMarkdown, openEditModal, reorderNotes, isModalOpen, setModalOpen, loading, alertMessage, setAlertMessage, activeNoteId, setActiveNoteId, openDropdownNoteId, setOpenDropdownNoteId, dropdownType, setDropdownType
-  }), [notes, pinnedNotes, archivedNotes, deletedNotes, searchedNotes, selectedNote, addNote, editNote, search, onPin, onArchive, onDelete, permanentDelete, changeNoteColour, makeNoteCopy, downloadMarkdown, openEditModal, reorderNotes, isModalOpen, setModalOpen, loading, alertMessage, activeNoteId, openDropdownNoteId, dropdownType]);
+    notes, pinnedNotes, archivedNotes, deletedNotes, searchedNotes, selectedNote, setNotes, setPinnedNotes, setArchivedNotes, setDeletedNotes, setSearchedNotes, addNote, editNote, search, searchNoteByTag, onPin, onArchive, onDelete, permanentDelete, changeNoteColour, changeNoteTags, getAllNotes, makeNoteCopy, downloadMarkdown, openEditModal, isModalOpen, setModalOpen, loading, alertMessage, setAlertMessage, activeNoteId, setActiveNoteId, openDropdownNoteId, setOpenDropdownNoteId, dropdownType, setDropdownType
+  }), [notes, pinnedNotes, archivedNotes, deletedNotes, searchedNotes, selectedNote, setNotes, setPinnedNotes, setArchivedNotes, setDeletedNotes, setSearchedNotes, addNote, editNote, search, searchNoteByTag, onPin, onArchive, onDelete, permanentDelete, changeNoteColour, changeNoteTags, getAllNotes, makeNoteCopy, downloadMarkdown, openEditModal, isModalOpen, setModalOpen, loading, alertMessage, activeNoteId, openDropdownNoteId, dropdownType]);
 
   return (
     <NoteContext.Provider value={contextValue}>

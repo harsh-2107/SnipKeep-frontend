@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useNoteContext } from "../../context/NoteContext";
+import { useTagContext } from "../../context/TagContext";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAdd, faUndo, faThumbtack, faFileArchive, faTrash, faThumbtackSlash, faTag, faEye, faEyeSlash, faPalette, faEllipsisV, faDropletSlash, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import { faAdd, faUndo, faThumbtack, faFileArchive, faTrash, faThumbtackSlash, faEye, faEyeSlash, faPalette, faEllipsisV, faDropletSlash, faCheckCircle, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import MarkdownRenderer from "../MarkdownRenderer";
 import Alert from "../Alert";
 import Confirm from '../Confirm';
@@ -43,12 +44,13 @@ const NoteView = ({ note, isOpen, onClose }) => {
   });
 
   const { addNote, editNote, permanentDelete, makeNoteCopy, downloadMarkdown } = useNoteContext();
+  const { globalTags, addTag } = useTagContext();
 
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [showBgOptions, setShowBgOptions] = useState(false);
-  const [availableTags, setAvailableTags] = useState([]);
   const [newTag, setNewTag] = useState("");
+  const [filteredGlobalTags, setFilteredGlobalTags] = useState(globalTags);
   const [alertMessage, setAlertMessage] = useState("");
   const [showMarkdown, setShowMarkdown] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -88,7 +90,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
         isDeleted: note?.isDeleted ?? false,
         colour: note?.colour ?? 'default'
       });
-      setAvailableTags([...(note?.tag ?? [])]);
+      setFilteredGlobalTags(globalTags);
       setNewTag("");
       setShowMoreOptions(false);
       setShowBgOptions(false);
@@ -103,7 +105,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
       isInternalChange.current = false;
       setHistoryIndexState(0);
       requestAnimationFrame(() => {
-        if (titleRef.current.value) {
+        if (titleRef.current?.value) {
           handleTitleInput();
         }
         contentRef.current.focus();
@@ -120,7 +122,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [note, isOpen, watch("isArchived"), watch("isDeleted"), watch("colour")]);
+  }, [note, isOpen]);
 
   // Effect to debounce content changes and push to history if modified
   useEffect(() => {
@@ -157,9 +159,22 @@ const NoteView = ({ note, isOpen, onClose }) => {
     }
   }, [markdownContent]);
 
+  // Effect to change the edit area background colour when the colour is changed
   useEffect(() => {
     setNoteColour(colourOptions.find(option => option.colour === watch("colour")));
   }, [watch("colour")]);
+
+  // Effect to filter tags according to the search input
+  useEffect(() => {
+    if (newTag) {
+      const filtered = globalTags.filter(tagObj =>
+        tagObj.name.toLowerCase().includes(newTag.toLowerCase())
+      );
+      setFilteredGlobalTags(filtered);
+    } else {
+      setFilteredGlobalTags(globalTags);
+    }
+  }, [newTag, globalTags]);
 
   // Set cursor and scrollTop in textarea with smooth scroll
   const restoreCursorAndScroll = useCallback((cursor, scrollTop) => {
@@ -253,19 +268,18 @@ const NoteView = ({ note, isOpen, onClose }) => {
       isDeleted: false,
       colour: 'default'
     });
-    setAvailableTags([]);
     setNewTag("");
     setAlertMessage("");
     setNoteColour(colourOptions[0]);
   }, []);
 
   // Add a new tag to the dropdown
-  const addNewTag = useCallback(() => {
-    if (newTag && !availableTags.includes(newTag)) {
-      setAvailableTags([...availableTags, newTag]);
+  const addNewTag = useCallback(async () => {
+    if (newTag) {
+      await addTag({ name: newTag });
       setNewTag("");
     }
-  }, [newTag, availableTags]);
+  }, [newTag]);
 
   // Check if 2 arrays are equal (to compare tag arrays)
   const areArraysEqual = useCallback((arr1, arr2) => {
@@ -368,7 +382,12 @@ const NoteView = ({ note, isOpen, onClose }) => {
         {/* Modal */}
         <div className="relative w-full sm:rounded-xl sm:max-w-[95vw] lg:max-w-[85vw] h-full sm:max-h-[97vh] xl:max-h-[94vh] bg-white dark:bg-gray-900 flex flex-col" onMouseDown={(e) => e.stopPropagation()} onMouseUp={(e) => e.stopPropagation()}>
           {/* Grid */}
-          <div className="md:grid md:grid-cols-2 flex-grow overflow-hidden">
+          <div className="md:grid md:grid-cols-2 flex-grow overflow-hidden"
+            onClick={() => {
+              if (showBgOptions) setShowBgOptions(false);
+              if (showMoreOptions) setShowMoreOptions(false);
+              if (showTagDropdown) setShowTagDropdown(false);
+            }}>
             <form id="note-form" onSubmit={handleSubmit(handleFormSubmit)} className={`${noteColour.colour === "default" ? "bg-white dark:bg-gray-800" : noteColour.bgColour} rounded-none md:rounded-t-lg md:rounded-tr-none shadow-sm overflow-y-auto h-full flex flex-col ${showMarkdown ? "hidden md:block" : ""}`}>
               <div className={`flex items-center justify-between p-1 sm:px-2 sm:py-1.5 border-b ${noteColour.colour === "default" ? "border-gray-200 dark:border-gray-700" : "border-gray-700/20"}`}>
                 <textarea
@@ -431,6 +450,7 @@ const NoteView = ({ note, isOpen, onClose }) => {
             onClick={() => {
               if (showBgOptions) setShowBgOptions(false);
               if (showMoreOptions) setShowMoreOptions(false);
+              if (showTagDropdown) setShowTagDropdown(false);
             }}>
             <div className="flex items-center">
               <div className="flex items-center sm:gap-4">
@@ -488,33 +508,40 @@ const NoteView = ({ note, isOpen, onClose }) => {
                       </div>
                       {/* Tag dropdown */}
                       <div className={`${showTagDropdown ? "absolute" : "hidden"} z-50 bottom-9 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-sm shadow-lg py-1.5`}>
-                        <p className="px-3 mb-1 text-gray-700 dark:text-white">Label note</p>
+                        <p className="px-3 mb-1 font-semibold text-gray-600 dark:text-white">Label note</p>
                         {/* Add new tag section */}
                         <div className="flex items-center px-3 mb-2">
                           <input
                             type="text"
                             value={newTag}
-                            onChange={(e) => setNewTag(e.target.value)}
-                            placeholder="New label"
+                            onChange={(e) => setNewTag(e.target.value.trim())}
+                            spellCheck="false"
+                            placeholder="Enter label name"
                             className="text-sm py-1 outline-none text-gray-700 dark:text-white bg-transparent"
                             onKeyDown={(e) => { if (e.key === "Enter") addNewTag() }}
                           />
-                          <button type="button" onClick={addNewTag} className="bg-purple-500 px-1.5 rounded-full hover:bg-purple-600"><FontAwesomeIcon icon={faAdd} className="text-md text-white" /></button>
+                          <FontAwesomeIcon icon={faMagnifyingGlass} className="text-xs text-gray-500 dark:text-gray-300" />
                         </div>
                         <div className=" max-h-40 overflow-y-auto custom-scrollbar">
                           {/* Existing tags as checkboxes */}
-                          {availableTags.map((tag, index) => (
+                          {filteredGlobalTags.map((tag, index) => (
                             <label key={index} className="flex items-center px-3 py-1 gap-3 text-sm text-gray-800 dark:text-white hover:bg-purple-50 dark:hover:bg-gray-700">
                               <input
                                 type="checkbox"
-                                value={tag}
-                                defaultChecked={true}
+                                value={tag.name}
+                                defaultChecked={watch("tag").includes(tag.name)}
                                 {...register("tag")}
-                                className="rounded accent-purple-600"
+                                className="rounded-md accent-purple-600"
                               />
-                              {tag}
+                              {tag.name}
                             </label>
                           ))}
+                          {filteredGlobalTags.length === 0 && newTag.trim() && (
+                            <button className="flex items-center w-full py-1 text-sm text-gray-600 dark:text-white bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600" onClick={addNewTag}>
+                              <FontAwesomeIcon icon={faAdd} className="text-md mx-2.5" />
+                              <p>Create <b>"{newTag}"</b></p>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

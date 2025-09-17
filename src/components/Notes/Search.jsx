@@ -34,7 +34,7 @@ const Search = () => {
     <>
       <Header />
 
-      <div className={`bg-transparent pt-18 lg:pt-25 z-0 mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 mb-5 ${sidebarOpen ? "pl-20 md:pl-68 xl:pl-72 2xl:pl-70" : "pl-20 md:pl-20 xl:pl-20 2xl:pl-25"}`} onClick={() => {setOpenDropdownNoteId(null); setDropdownType("")}}>
+      <div className={`bg-transparent min-h-[97vh] pt-18 lg:pt-25 z-0 mx-auto pr-6 sm:pr-4 md:pr-4 xl:pr-8 mb-5 ${sidebarOpen ? "pl-20 md:pl-68 xl:pl-72 2xl:pl-70" : "pl-20 md:pl-20 xl:pl-20 2xl:pl-25"}`} onClick={() => {setOpenDropdownNoteId(null); setDropdownType("")}}>
         {hasSearched ?
           (searchedNotes.length === 0 ? (
             // Display this message if no notes are present

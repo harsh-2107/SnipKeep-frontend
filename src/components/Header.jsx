@@ -1,34 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useNoteContext } from "../context/NoteContext";
+import { useTagContext } from "../context/TagContext";
 import { useUserContext } from "../context/UserContext";
 import { useSidebarContext } from '../context/SidebarContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faMagnifyingGlass, faArrowLeft, faXmark, faLightbulb, faFileArchive, faTrash, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faMagnifyingGlass, faArrowLeft, faXmark, faLightbulb, faFileArchive, faTrash, faUser, faPen, faTag } from '@fortawesome/free-solid-svg-icons';
 import DarkModeToggler from './DarkModeToggler';
 import ViewModeToggler from "./ViewModeToggler";
 import Profile from "./Profile";
 import Alert from "./Alert";
+import EditLabel from "./Tags/EditLabel";
 
 const navItems = [
   { name: "Notes", icon: faLightbulb, path: "/notes", textSize: "text-[1.4rem]", px: "px-[1.053rem]", py: "py-" },
   { name: "Archive", icon: faFileArchive, path: "/archive", textSize: "text-xl", px: "px-[1.09rem]", py: "py-" },
-  { name: "Bin", icon: faTrash, path: "/trash", textSize: "text-xl", px: "px-[1.022rem]", py: "py-" }
+  { name: "Bin", icon: faTrash, path: "/trash", textSize: "text-xl", px: "px-[1.02rem]", py: "py-" }
 ];
 
 const Header = () => {
   const [searchText, setSearchText] = useState("");
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showEditLabel, setShowEditLabel] = useState(false);
+  const [sideOpenOnHover, setSideOpenOnHover] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const { search, setOpenDropdownNoteId, setDropdownType } = useNoteContext();
+  const { globalTags, loading } = useTagContext();
   const { profileOpen, setProfileOpen, closeProfile, alertMessage } = useUserContext();
   const { sidebarOpen, setSidebarOpen } = useSidebarContext();
 
   const inputRef = useRef(null);
   const mobileInputRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
 
   const [lastVisitedPrimaryPath, setLastVisitedPrimaryPath] = useState(
     localStorage.getItem('lastVisitedPrimaryPath') || '/notes' // Default to /notes
@@ -61,6 +67,25 @@ const Header = () => {
     setShowMobileSearch(false);
     clearSearch();
   }, [clearSearch]);
+
+  // Handle sidebar mouse enter with delay
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (!sidebarOpen) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setSideOpenOnHover(true);
+      }, 400);
+    }
+  }, [sidebarOpen]);
+
+  // Handle sidebar mouse leave
+  const handleSidebarMouseLeave = useCallback(() => {
+    // Clear the timeout if user leaves before 0.4 seconds
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setSideOpenOnHover(false);
+  }, []);
 
   // Effect to listen to scroll event and set the value of isScrolled state
   useEffect(() => {
@@ -178,28 +203,79 @@ const Header = () => {
           </div>
         </header >
 
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? "w-65 shadow-lg/40 md:shadow-none" : "w-18"} transition-all duration-100 overflow-hidden bg-white dark:bg-gray-800 h-screen fixed top-0 z-10`}>
-          <ul className="space-y-1 pt-14 xl:pt-17">
-            {navItems.map(({ name, icon, path, textSize, px }) => (
+        <aside className={`${sidebarOpen || sideOpenOnHover ? "w-65 overflow-y-auto" : "w-18 overflow-y-hidden"} ${sideOpenOnHover ? "shadow-lg/40 shadow-gray-700 dark:shadow-white" : ""} transition-all overflow-x-hidden custom-scrollbar bg-white dark:bg-gray-800 h-screen fixed top-0 z-10`} onMouseEnter={handleSidebarMouseEnter} onMouseLeave={handleSidebarMouseLeave}>
+          <ul className="pt-14 xl:pt-17 pb-10">
+            {navItems.map(({ name, icon, path, textSize, px }, index) => (
               <li key={name}>
-                <Link
-                  to={path}
-                  className={`flex items-center rounded-r-full transition-colors
-                  ${sidebarOpen ? (location.pathname === path || (location.pathname === "/search" && path === lastVisitedPrimaryPath)) ? 'px-7 py-3 bg-purple-300 dark:bg-purple-500 dark:text-white' : 'px-7 py-3 hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700'
-                      : 'px-2.5'
+                <Link to={path}
+                  className={`flex items-center rounded-r-full transition-colors ${sidebarOpen || sideOpenOnHover
+                    ? (location.pathname === path || (location.pathname === "/search" && path === lastVisitedPrimaryPath))
+                      ? 'px-7 py-3 bg-purple-300 dark:bg-purple-500 dark:text-white'
+                      : 'px-7 py-3 hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700'
+                    : 'px-2.5'
                     }`}>
-                  <FontAwesomeIcon icon={icon} className={`${textSize} mr-6 rounded-full ${!sidebarOpen
-                    ? (location.pathname === path || (location.pathname === "/search" && path === lastVisitedPrimaryPath)) ? `${px} py-3.5 text-gray-800 bg-purple-300 dark:bg-purple-500 dark:text-white` : `${px} py-3.5 text-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white` : ''}`} />
-                  {sidebarOpen && <span className='text-md font-semibold'>{name}</span>}
+                  <FontAwesomeIcon
+                    icon={icon}
+                    className={`${textSize} mr-6 rounded-full ${!(sidebarOpen || sideOpenOnHover)
+                      ? (location.pathname === path || (location.pathname === "/search" && path === lastVisitedPrimaryPath))
+                        ? `${px} py-3.5 text-gray-800 bg-purple-300 dark:bg-purple-500 dark:text-white`
+                        : `${px} py-3.5 text-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white`
+                      : ''}`} />
+                  {(sidebarOpen || sideOpenOnHover) && <span className='text-md font-semibold'>{name}</span>}
                 </Link>
               </li>
-            ))}
+            )).flatMap((item, index) => {
+              if (index === 1) {
+                return [item,
+                  <li key="edit-labels">
+                    <button onClick={() => setShowEditLabel(true)}
+                      className={`flex items-center rounded-r-full w-full transition-colors ${sidebarOpen || sideOpenOnHover
+                        ? showEditLabel
+                          ? 'px-7 py-3 dark:text-white'
+                          : 'px-7 py-3 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white'
+                        : 'px-2.5'
+                        }`} disabled={loading} >
+                      <FontAwesomeIcon
+                        icon={faPen}
+                        className={`text-xl mr-5 rounded-full ${!(sidebarOpen || sideOpenOnHover)
+                          ? 'px-[0.93rem] py-3.5 text-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white'
+                          : ''
+                          }`} />
+                      {(sidebarOpen || sideOpenOnHover) && <span className='text-md font-semibold'>Edit Labels</span>}
+                    </button>
+                  </li>,
+                  globalTags.map(({ name }) => (
+                    <li key={name}>
+                      <Link to={`/label/${encodeURIComponent(name)}`}
+                        className={`flex items-center rounded-r-full transition-colors ${sidebarOpen || sideOpenOnHover
+                          ? (location.pathname === `/label/${encodeURIComponent(name)}` || (location.pathname === "/search" && `/label/${encodeURIComponent(name)}` === lastVisitedPrimaryPath))
+                            ? 'px-7 py-3 bg-purple-300 dark:bg-purple-500 dark:text-white'
+                            : 'px-7 py-3 hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700'
+                          : 'px-2.5'
+                          }`}>
+                        <FontAwesomeIcon
+                          icon={faTag}
+                          className={`text-lg mr-6 rotate-[135deg] rounded-full ${!(sidebarOpen || sideOpenOnHover)
+                            ? (location.pathname === `/label/${encodeURIComponent(name)}` || (location.pathname === "/search" && `/label/${encodeURIComponent(name)}` === lastVisitedPrimaryPath))
+                              ? `px-4 py-3.5 text-gray-800 bg-purple-300 dark:bg-purple-500 dark:text-white`
+                              : `px-4 py-3.5 text-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-white`
+                            : ''}`} />
+                        {(sidebarOpen || sideOpenOnHover) && <span className='text-md font-semibold'>{name}</span>}
+                      </Link>
+                    </li>
+                  ))
+                ];
+              }
+              return item;
+            })}
+
           </ul>
         </aside>
       </div>
 
       {profileOpen && <Profile />}
+
+      {showEditLabel && <EditLabel onClose={() => setShowEditLabel(false)} />}
 
       {alertMessage && <Alert text={alertMessage} color="purple" />}
     </>

@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import LoadingSpinner from './components/LoadingSpinner';
+import { useUserContext } from './context/UserContext';
+import { useNoteContext } from './context/NoteContext';
+import { useTagContext } from './context/TagContext';
 
 const ProtectedRoute = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const { getUser } = useUserContext();
+  const { getAllNotes } = useNoteContext();
+  const { fetchAllTags } = useTagContext();
 
   // On ProtectedRoute mount, check if user is authenticated by verifying token
   useEffect(() => {
@@ -13,15 +19,11 @@ const ProtectedRoute = ({ children }) => {
       // If token found, verify it with the backend
       if (token) {
         try {
-          const getUserURL = import.meta.env.VITE_API_BASE_URL + import.meta.env.VITE_GET_USER_ENDPOINT;
-          const res = await fetch(getUserURL, {
-            method: "POST",
-            headers: {
-              "auth-token": token,
-            },
-          });
-          if (res.ok) {
-            setIsAuthenticated(true); // If token is valid, set user as unauthenticated
+          const success = await getUser();
+          if (success) {
+            setIsAuthenticated(true); // If token is valid, set user as authenticated
+            getAllNotes();
+            fetchAllTags();
           } else {
             // If token is invalid, remove it from local storage and set user as unauthenticated
             localStorage.removeItem('token');
